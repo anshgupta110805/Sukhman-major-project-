@@ -1,0 +1,92 @@
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+
+import Sidebar from './components/Sidebar';
+import Navbar from './components/Navbar';
+import Dashboard from './pages/Dashboard';
+import ThreatCenter from './pages/ThreatCenter';
+import AIEngineMonitor from './pages/AIEngineMonitor';
+import AuditLogs from './pages/AuditLogs';
+import Analytics from './pages/Analytics';
+import Alerts from './pages/Alerts';
+import Settings from './pages/Settings';
+import NetworkGraph from './pages/NetworkGraph';
+import UserProfile from './pages/UserProfile';
+
+import { motion } from 'framer-motion';
+import { API_BASE_URL } from './config';
+
+
+function App() {
+  const [token, setToken] = useState('DUMMY_TOKEN');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setToken(data.access_token);
+        localStorage.setItem('access_token', data.access_token);
+      } else {
+        const err = await res.json().catch(() => ({ detail: `Server error ${res.status}` }));
+        alert(`Login failed: ${err.detail || "Invalid credentials"}`);
+      }
+    } catch (err) {
+      console.error("Login failed:", err);
+      alert("Could not connect to server. Ensure main.py is running on port 8000.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    localStorage.removeItem('access_token');
+  };
+
+  // Login system removed as requested. Always showing the secure dashboard.
+  return (
+    <Router>
+      <div className="layout">
+        <Sidebar onLogout={handleLogout} />
+        <div className="main-content">
+          <Navbar />
+          <motion.div 
+            className="page-container"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Routes>
+              <Route path="/" element={<Dashboard token={token} />} />
+              <Route path="/threats" element={<ThreatCenter token={token} />} />
+              <Route path="/ai-engine" element={<AIEngineMonitor token={token} />} />
+              <Route path="/logs" element={<AuditLogs token={token} />} />
+              <Route path="/graph" element={<NetworkGraph token={token} />} />
+              <Route path="/analytics" element={<Analytics token={token} />} />
+              <Route path="/alerts" element={<Alerts token={token} />} />
+              <Route path="/settings" element={<Settings token={token} />} />
+              <Route path="/profile" element={<UserProfile token={token} />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </motion.div>
+        </div>
+        <Toaster position="top-right" toastOptions={{ 
+          style: { background: 'var(--glass-bg)', color: '#fff', border: '1px solid var(--border)', backdropFilter: 'blur(10px)' }
+        }} />
+      </div>
+    </Router>
+  );
+}
+
+export default App;
